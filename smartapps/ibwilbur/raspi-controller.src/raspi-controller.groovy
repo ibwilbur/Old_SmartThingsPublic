@@ -19,9 +19,9 @@ definition (
     author: "Will Shelton",
     description: "Manages interaction betwen SmartThings and a Raspberry Pi",
     category: "SmartThings Labs",
-    iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
-    iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png",
-    iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience@2x.png"
+    iconUrl: "http://download.easyicon.net/png/559404/32/",
+    iconX2Url: "http://download.easyicon.net/png/559404/64/",
+    iconX3Url: "http://download.easyicon.net/png/559404/128/"
 )
 
 preferences {
