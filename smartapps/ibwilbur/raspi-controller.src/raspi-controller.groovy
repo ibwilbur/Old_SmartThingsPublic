@@ -47,38 +47,38 @@ def updated() {
 def initialize() {
     if (!state.accessToken) { createAccessToken() }
     
-	subscribe(lights, "switch.on", eventHandler, [filterEvents: false])
+    subscribe(acceleration, "acceleration", eventHandler, [filterEvents: false])
+    subscribe(battery, "battery", eventHandler, [filterEvents: false])
+	subscribe(camera, "image", eventHandler, [filterEvents: false])
+    subscribe(contacts, "contact", eventHandler, [filterEvents: false])
+	subscribe(dimmers, "level", eventHandler, [filterEvents: false])
+    subscribe(doors, "door", eventHandler, [filterEvents: false])
+	subscribe(energy, "energy", eventHandler, [filterEvents: false])
+    subscribe(humidity, "humidity", eventHandler, [filterEvents: false])
+    subscribe(lights, "switch.on", eventHandler, [filterEvents: false])
 	subscribe(lights, "switch.off", eventHandler, [filterEvents: false])
-	subscribe(doors, "door", eventHandler, [filterEvents: false])
-	subscribe(dimmers, "level", eventHandler, [filterEvents: false])    
-	subscribe(momentaries, "push", eventHandler, [filterEvents: false])
+	subscribe(locks, "lock", eventHandler, [filterEvents: false])
+	subscribe(luminosity, "luminosity", eventHandler, [filterEvents: false])
+    subscribe(momentaries, "push", eventHandler, [filterEvents: false])
 	subscribe(momentaries, "momentary", eventHandler, [filterEvents: false])
-    
+    subscribe(motion, "motion", eventHandler, [filterEvents: false])
+	subscribe(music, "status", eventHandler, [filterEvents: false])
+	subscribe(music, "level", eventHandler, [filterEvents: false])
+	subscribe(music, "trackDescription", eventHandler, [filterEvents: false])
+	subscribe(music, "trackData", eventHandler, [filterEvents: false])
+	subscribe(music, "mute", eventHandler, [filterEvents: false])    
+    subscribe(power, "power", eventHandler, [filterEvents: false])  
+    subscribe(presence, "presence", eventHandler, [filterEvents: false])    
+    subscribe(sprinklers, "switch", sprinklerEventHandler)   
 	subscribe(thermostats, "temperature", eventHandler, [filterEvents: false])
 	subscribe(thermostats, "heatingSetpoint", eventHandler, [filterEvents: false])
 	subscribe(thermostats, "coolingSetpoint", eventHandler, [filterEvents: false])
 	subscribe(thermostats, "thermostatFanMode", eventHandler, [filterEvents: false])
 	subscribe(thermostats, "thermostatOperatingState", eventHandler, [filterEvents: false])
-    
-	subscribe(presence, "presence", eventHandler, [filterEvents: false])
-	subscribe(contacts, "contact", eventHandler, [filterEvents: false])
-	subscribe(motion, "motion", eventHandler, [filterEvents: false])    
 	subscribe(temperature, "temperature", eventHandler, [filterEvents: false])   
-	subscribe(humidity, "humidity", eventHandler, [filterEvents: false])
 	subscribe(water, "water", eventHandler, [filterEvents: false])
-	subscribe(battery, "battery", eventHandler, [filterEvents: false])
-	subscribe(energy, "energy", eventHandler, [filterEvents: false])
-	subscribe(power, "power", eventHandler, [filterEvents: false])         
-	subscribe(acceleration, "acceleration", eventHandler, [filterEvents: false])
-	subscribe(luminosity, "luminosity", eventHandler, [filterEvents: false])
     
-	subscribe(locks, "lock", eventHandler, [filterEvents: false])
-	subscribe(music, "status", eventHandler, [filterEvents: false])
-	subscribe(music, "level", eventHandler, [filterEvents: false])
-	subscribe(music, "trackDescription", eventHandler, [filterEvents: false])
-	subscribe(music, "trackData", eventHandler, [filterEvents: false])
-	subscribe(music, "mute", eventHandler, [filterEvents: false])
-	subscribe(camera, "image", eventHandler, [filterEvents: false])    
+    sendCommand("GET", "/devices", [value:"reload"])
 }
 
 preferences {
@@ -86,7 +86,8 @@ preferences {
     section("Control things") {
 		input "lights", "capability.switch", title: "Lights", multiple: true, required: false
 		input "doors", "capability.doorControl", title: "Doors", multiple: true, required: false
-		input "music", "capability.musicPlayer", title: "Music Players", multiple: true, required: false        
+		input "music", "capability.musicPlayer", title: "Music Players", multiple: true, required: false
+        input "sprinklers", "capability.relaySwitch", title: "Sprinklers", multiple: true, required: false
         //input "thermostats", "capability.thermostat", title: "Thermostats", multiple: true, required: false
         //input "locks", "capability.lock", title: "Locks", multiple: true, required: false        
     }
@@ -121,6 +122,7 @@ def getDevices() {
 	temperature?.each{data << getDeviceData(it)}
 	humidity?.each{data << getDeviceData(it)}    
 	battery?.each{data << getDeviceData(it)}
+    sprinklers?.each{data << getDeviceData(it)}
     //water?.each{data << getDeviceData(it)}
     //thermostats?.each{data << getDeviceData(it)}
     //locks?.each{data << getDeviceData(it)}
@@ -154,6 +156,19 @@ def updateDevice() {
             	device.update(value)
             }
         	break
+            
+		case "switch":        	
+        	device = switches?.find { it.id == deviceId }
+            if (!device) {
+            	device = sprinklers?.find { it.id == deviceId }
+            }
+            if (device) {
+            	device.update(value)
+            } else {
+            	log.debug "Unable to locate Device: ${deviceId}"
+            }
+        	break
+
             
 		default:
             break
@@ -227,29 +242,35 @@ def roundNumber(num) {
     }
 }
 
+def sprinklerEventHandler(e) {
+    log.debug "Sprinkler event from: $e.displayName, Value: $e.value, Source: $e.source, ID: $e.deviceId, Name: $e.name"
+    if (e.value != "off" && e.value != "on") {
+    	def data = [deviceid: e.deviceId, attribute: e.name, value: e.value]  
+    	sendCommand("PUT", "/sprinkler", data)    
+    }
+}
+
 def eventHandler(e) {
     log.debug "Event from: $e.displayName, Value: $e.value, Source: $e.source, ID: $e.deviceId, Name: $e.name"
-    def data = [deviceid: e.deviceId, attribute: e.name, value: e.value ]
     
-    def headers = [:]
+    def data = [deviceid: e.deviceId, attribute: e.name, value: e.value ]
     def method = "PUT"
     def value = e.value
-    headers.put("HOST", "$settings.ip:$settings.port")
-    headers.put("Content-Type", "application/x-www-form-urlencoded")
-    
     if (e.value.contains('refresh.')) { 
     	method = "GET" 
         data.value = "refresh"
-	}
-		
-    def hubAction = new physicalgraph.device.HubAction(
-        method: method, 
-        path: "/devices",  
-        headers: headers,
-        body: data
-	)
+	}    
+    sendCommand(method, "/devices", data)
+}
 
-    sendHubCommand(hubAction) 
+def sendCommand(method, path, data) {
+	def hubAction = new physicalgraph.device.HubAction(
+    	method: method,
+        path: path,
+        headers: [HOST: "$settings.ip:$settings.port"],
+        body: data
+    )
+    sendHubCommand(hubAction)
 }
 
 mappings {
