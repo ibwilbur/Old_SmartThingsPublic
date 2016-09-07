@@ -17,13 +17,17 @@ metadata {
 	definition (name: "Virtual Sprinkler", namespace: "ibwilbur", author: "Will Shelton") {
     	capability "Refresh"
 		capability "Relay Switch"
+        
+        command "update"
 	}
 	simulator {}
     
 	tiles {
 		standardTile("switch", "device.switch", width: 2, height: 2) {
-			state "on", label: '${name}', action: "off", icon: "st.Outdoor.outdoor12", backgroundColor: "#79b821"
-			state "off", label: '${name}', action: "on", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff"
+			state "on", label: "on", action: "off", icon: "st.Outdoor.outdoor12", backgroundColor: "#79b821", nextState: "turningoff"
+			state "off", label: "off", action: "on", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff", nextState: "turningon"
+            state "turningon", label:"turning on", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffa81e"
+            state "turningoff", label:"turning off", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffa81e"
 		}
 		standardTile("refresh", "device.switch", inactiveLabel: false, decoration: "flat") {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
@@ -34,7 +38,6 @@ metadata {
 	}
 }
 
-// parse events into attributes
 def parse(String description) {
 	log.debug "Parsing '${description}'"
 }
@@ -55,14 +58,19 @@ def refresh() {
 	def rnd = Calendar.getInstance().getTimeInMillis()
 	log.trace "Sending refresh for $device.deviceNetworkId"
 	sendEvent(name: "refresh", value: device.deviceNetworkId + ".refresh.$rnd")
+    sendEvent(name: "switch", value: "off")
 }
 
 def on() {
-	log.debug "Executing 'on'"
-	sendEvent(name: "switch", value: "on")
+	log.debug "Sprinkler $device.name turning on"
+	sendEvent(name: "switch", value: "turningon")
 }
 
 def off() {
-	log.debug "Executing 'off'"
-	sendEvent(name: "switch", value: "off")
+	log.debug "Sprinkler $device.name turning off"
+	sendEvent(name: "switch", value: "turningoff")
+}
+
+def update(newValue) {
+	sendEvent(name: "switch", value: newValue)
 }
