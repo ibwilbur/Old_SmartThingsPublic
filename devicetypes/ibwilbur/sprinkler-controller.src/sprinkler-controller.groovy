@@ -14,49 +14,51 @@
  *
  */
 metadata {
-    
 	definition (name: "Sprinkler Controller", namespace: "ibwilbur", author: "Will Shelton") {
-		capability "Momentary"
-		capability "Switch"
-
-		attribute "effect", "string"
-
-		command "setRuntimeParams"
-		command "RelayOn1"
-		command "RelayOn1For"
-		command "RelayOff1"
-		command "RelayOn2"
-		command "RelayOn2For"
-		command "RelayOff2"        
+		capability "Actuator"
+        capability "Refresh"
+        capability "Switch"
+        
+        command "Zone1On"
+        command "Zone1Off"
+        command "Zone1OnFor"
+        command "Zone2On"
+        command "Zone2Off"
+        command "Zone2OnFor"        
 	}
 
-
-	simulator {
-		// TODO: define status and reply messages here
+	preferences {
+		section("Configuration") {
+			input "ip", "text", "title": "IP Address", multiple: false, required: false
+			input "port", "text", "title": "Port", multiple: false, required: false
+            input "uuid", "text", "title": "UUID", multiple: false, required: false
+		}   
 	}
+    
+	simulator {}
 
 	tiles {
         standardTile("allZonesTile", "device.switch", width: 1, height: 1, canChangeIcon: true, canChangeBackground: true) {
             state "off", label: 'Start', action: "switch.on", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff", nextState: "starting"
             state "on", label: 'Running', action: "switch.off", icon: "st.Health & Wellness.health7", backgroundColor: "#53a7c0", nextState: "stopping"
-            state "starting", label: 'Starting...', action: "switch.off", icon: "st.Health & Wellness.health7", backgroundColor: "#53a7c0"
-            state "stopping", label: 'Stopping...', action: "switch.off", icon: "st.Health & Wellness.health7", backgroundColor: "#53a7c0"
+            state "starting", label: 'Starting', action: "switch.off", icon: "st.Health & Wellness.health7", backgroundColor: "#53a7c0"
+            state "stopping", label: 'Stopping', action: "switch.off", icon: "st.Health & Wellness.health7", backgroundColor: "#53a7c0"
             state "rainDelayed", label: 'Rain Delay', action: "switch.off", icon: "st.Weather.weather10", backgroundColor: "#fff000", nextState: "off"
         	state "warning", label: 'Issue',  icon: "st.Health & Wellness.health7", backgroundColor: "#ff000f", nextState: "off"
         }
         
         standardTile("zoneOneTile", "device.zoneOne", width: 1, height: 1, canChangeIcon: true, canChangeBackground: true) {
-            state "off1", label: 'One', action: "RelayOn1", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff",nextState: "sending1"
-            state "sending1", label: 'sending', action: "RelayOff1", icon: "st.Health & Wellness.health7", backgroundColor: "#cccccc"
-            state "q1", label: 'One', action: "RelayOff1",icon: "st.Outdoor.outdoor12", backgroundColor: "#c0a353", nextState: "sending1"
-            state "on1", label: 'One', action: "RelayOff1",icon: "st.Outdoor.outdoor12", backgroundColor: "#53a7c0", nextState: "sending1"
+            state "off", label: 'One', action: "Zone1On", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff", nextState: "sending"
+            state "sending", label: 'sending', action: "Zone1Off", icon: "st.Health & Wellness.health7", backgroundColor: "#cccccc"
+            state "queued", label: 'One', action: "Zone1Off",icon: "st.Outdoor.outdoor12", backgroundColor: "#c0a353", nextState: "sending"
+            state "on", label: 'One', action: "Zone1Off",icon: "st.Outdoor.outdoor12", backgroundColor: "#53a7c0", nextState: "sending"
         }
         
 		standardTile("zoneTwoTile", "device.zoneTwo", width: 1, height: 1, canChangeIcon: true, canChangeBackground: true) {
-            state "off2", label: 'Two', action: "RelayOn2", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff", nextState: "sending2"
-            state "sending2", label: 'sending', action: "RelayOff2", icon: "st.Health & Wellness.health7", backgroundColor: "#cccccc"
-            state "q2", label: 'Two', action: "RelayOff2",icon: "st.Outdoor.outdoor12", backgroundColor: "#c0a353", nextState: "sending2"
-            state "on2", label: 'Two', action: "RelayOff2",icon: "st.Outdoor.outdoor12", backgroundColor: "#53a7c0", nextState: "sending2"
+            state "off", label: 'Two', action: "Zone2On", icon: "st.Outdoor.outdoor12", backgroundColor: "#ffffff", nextState: "sending"
+            state "sending", label: 'sending', action: "Zone2Off", icon: "st.Health & Wellness.health7", backgroundColor: "#cccccc"
+            state "queued", label: 'Two', action: "Zone2Off",icon: "st.Outdoor.outdoor12", backgroundColor: "#c0a353", nextState: "sending"
+            state "on", label: 'Two', action: "Zone2Off",icon: "st.Outdoor.outdoor12", backgroundColor: "#53a7c0", nextState: "sending"
         }
         
 		standardTile("refreshTile", "device.refresh", width: 1, height: 1, canChangeIcon: true, canChangeBackground: true, decoration: "flat") {
@@ -68,176 +70,124 @@ metadata {
             state("skip", label: "Skip 1X", action: "expedite", icon: "st.Office.office7", backgroundColor: "#c0a353")
             state("expedite", label: "Expedite", action: "onHold", icon: "st.Office.office7", backgroundColor: "#53a7c0")
             state("onHold", label: "Pause", action: "noEffect", icon: "st.Office.office7", backgroundColor: "#bc2323")
-        }  
+        }
         
 		main "allZonesTile"
-		details(["zoneOneTile","zoneTwoTile","scheduleEffect","refreshTile"])
+		details(["zoneOneTile","zoneTwoTile","scheduleEffect","refreshTile"])        
 	}
 }
 
-// parse events into attributescon
+// parse events into attributes
 def parse(String description) {
-	log.debug "Parsing '${description}'"
-	// TODO: handle 'switch' attribute
-	// TODO: handle 'effect' attribute
+    log.debug "Parsing '${description}'"
+    def msg = parseLanMessage(description)
+    log.debug "data ${msg.data}"
+    log.debug "headers ${msg.headers}"
 }
 
-def setRuntimeParams(controlUrl, serviceType, targetHost) {
-	state.controlurl = controlUrl
-    log.trace "Control URL set to: ${state.controlurl}"
-    
-    state.serviceType = serviceType
-    log.trace "ServiceType set to: ${state.serviceType}"
-    
-    state.targetHost = targetHost
-    log.trace "TargetHost set to: ${state.targetHost}"
+def installed() {
+	//upnpSubscribe("/${device.deviceNetworkId}")
+    upnpSubscribe()
 }
 
-def RelayOn1() {
-    log.info "Executing 'on,1'"
-    doAction("turnOnZone", [zone: 1])
-}
-
-def RelayOn1For(value) {
-    value = checkTime(value)
-    log.info "Executing 'on,1,$value'"
-    sendCommand("on", 1, value)
-}
-
-def RelayOff1() {
-    log.info "Executing 'off,1'"
-    doAction("turnOffZone", [zone: 1])
-}
-
-def RelayOn2() {
-    log.info "Executing 'on,2'"
-    doAction("turnOnZone", [zone: 2])
-}
-
-def RelayOn2For(value) {
-    value = checkTime(value)
-    log.info "Executing 'on,2,$value'"
-    sendCommand("on", 2, value)
-}
-
-def RelayOff2() {
-    log.info "Executing 'off,2'"
-    doAction("turnOffZone", [zone: 2])
-}
-
-def doAction(action, body) {
-	def result = new physicalgraph.device.HubSoapAction(
-    	path:		"${state.controlurl}",
-        urn:		"${state.serviceType}",
-        action:		action,
-        body:		body,
-        headers:	[HOST: "${state.targetHost}:8080", CONNECTION: "close"]
-    )
-    //log.debug result
-    return result
+def updated() {
+	//upnpSubscribe("/${device.deviceNetworkId}")
+    upnpSubscribe()
 }
 
 def on() {
-    log.info "Executing 'allOn'"
-    zigbee.smartShield(text: "allOn,${oneTimer ?: 0},${twoTimer ?: 0},${threeTimer ?: 0},${fourTimer ?: 0},${fiveTimer ?: 0},${sixTimer ?: 0},${sevenTimer ?: 0},${eightTimer ?: 0}").format()
-}
 
-def OnWithZoneTimes(value) {
-    log.info "Executing 'allOn' with zone times [$value]"
-    def evt = createEvent(name: "switch", value: "starting", displayed: true)
-    sendEvent(evt)
-    
-	def zoneTimes = [:]
-    for(z in value.split(",")) {
-    	def parts = z.split(":")
-        zoneTimes[parts[0].toInteger()] = parts[1]
-        log.info("Zone ${parts[0].toInteger()} on for ${parts[1]} minutes")
-    }
-    zigbee.smartShield(text: "allOn,${checkTime(zoneTimes[1]) ?: 0},${checkTime(zoneTimes[2]) ?: 0},${checkTime(zoneTimes[3]) ?: 0},${checkTime(zoneTimes[4]) ?: 0},${checkTime(zoneTimes[5]) ?: 0},${checkTime(zoneTimes[6]) ?: 0},${checkTime(zoneTimes[7]) ?: 0},${checkTime(zoneTimes[8]) ?: 0}").format()
 }
 
 def off() {
-    log.info "Executing 'allOff'"
-    zigbee.smartShield(text: "allOff").format()
-}
-
-def checkTime(t) {
-	def time = (t ?: 0).toInteger()
-    time > 60 ? 60 : time
-}
-
-def update() {
-    log.info "Executing refresh"
-    zigbee.smartShield(text: "update").format()
-}
-
-def rainDelayed() {
-    log.info "rain delayed"
-    if(device.currentValue("switch") != "on") {
-        sendEvent (name:"switch", value:"rainDelayed", displayed: true)
-    }
-}
-
-def warning() {
-    log.info "Warning: Programmed Irrigation Did Not Start"
-    if(device.currentValue("switch") != "on") {
-        sendEvent (name:"switch", value:"warning", displayed: true)
-    }
-}
-
-def push() {
-    log.info "advance to next zone"
-    zigbee.smartShield(text: "advance").format()  //turn off currently running zone and advance to next
-}
-
-def	skip() {
-    def evt = createEvent(name: "effect", value: "skip", displayed: true)
-    log.info("Sending: $evt")
-    sendEvent(evt)
-}
-
-// over-ride rain delay and water even if it rains
-def	expedite() {
-    def evt = createEvent(name: "effect", value: "expedite", displayed: true)
-    log.info("Sending: $evt")
-    sendEvent(evt)
-}
-
-// schedule operates normally
-def	noEffect() {
-    def evt = createEvent(name: "effect", value: "noEffect", displayed: true)
-    log.info("Sending: $evt")
-    sendEvent(evt)
-}
-
-// turn schedule off indefinitely
-def	onHold() {
-    def evt = createEvent(name: "effect", value: "onHold", displayed: true)
-    log.info("Sending: $evt")
-    sendEvent(evt)
-}
-
-private getCallbackAddress() {
-    return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
-}
-
-/* Helper functions to get the network device ID */
-private String NetworkDeviceId(){
-    def iphex = convertIPtoHex(settings.ip).toUpperCase()
-    def porthex = convertPortToHex(settings.port)
-    log.debug "${iphex}:${porthex}.irrigation"
-    return "${iphex}:${porthex}.irrigation" 
-}
-
-private String convertIPtoHex(ipAddress) { 
-    String hex = ipAddress.tokenize( '.' ).collect {  String.format( '%02x', it.toInteger() ) }.join()
-    //log.debug "IP address entered is $ipAddress and the converted hex code is $hex"
-    return hex
 
 }
 
-private String convertPortToHex(port) {
-    String hexport = port.toString().format( '%04x', port.toInteger() )
-    //log.debug hexport
-    return hexport
+def refresh() {
+	sendCommand("refresh", null)
+}
+
+def Zone1On() {
+	sendCommand("zoneOn", [zone: 1])
+}
+
+def Zone1Off() {
+	sendCommand("zoneOff", [zone: 1])
+}
+
+def Zone1OnFor(value) {
+	sendCommand("zoneOnFor", [zone: 1, time: value])
+}
+
+def Zone2On() {
+	sendCommand("zoneOn", [zone: 2])
+}
+
+def Zone2Off() {
+	sendCommand("zoneOff", [zone: 2])
+}
+
+def Zone2OnFor(value) {
+	sendCommand("zoneOnFor", [zone: 2, time: value])
+}
+
+def sendCommand(action, body) {
+	// controlUrl: /upnp/service/control?usn=6bd5eabd-b7c8-4f7b-ae6c-a30ccdeb5988::urn:schemas-upnp-org:service:Sprinkler:1
+   
+    log.trace "Sending ${action}: ${body}"
+    
+	def result = new physicalgraph.device.HubSoapAction(
+    	path:		"/upnp/service/control?usn=${settings.uuid}::urn:schemas-upnp-org:service:Sprinkler:1",
+        urn:		"urn:schemas-upnp-org:service:Sprinkler:1",
+        action:		action,
+        body:		body,
+        headers:	[HOST: "${settings.ip}:${settings.port}", CONNECTION: "close"]
+    )
+    //log.debug "sendCommand: ${result}"
+   	return result
+}
+
+private upnpSubscribe(callbackPath="") {
+	// /upnp/service/events?usn=6bd5eabd-b7c8-4f7b-ae6c-a30ccdeb5988::urn:schemas-upnp-org:service:Sprinkler:1
+	log.trace "Subscribing to UPNP events"
+    
+    def result = new physicalgraph.device.HubAction(
+        method: 	"SUBSCRIBE",
+        path: 		"/upnp/service/events?usn=${settings.uuid}::urn:schemas-upnp-org:service:Sprinkler:1",       
+        headers: [
+            HOST: 		getHostAddress(),
+            CALLBACK: 	"<http://${getCallBackAddress()}/notify$callbackPath>",
+            NT: 		"upnp:event",
+            TIMEOUT: 	"Second-28800"
+        ])
+    //log.debug "subscribe: ${result}"
+	return result
+}
+
+private getCallBackAddress() {
+	return device.hub.getDataValue("localIP") + ":" + device.hub.getDataValue("localSrvPortTCP")
+}
+
+private Integer convertHexToInt(hex) {
+ 	Integer.parseInt(hex,16)
+}
+
+private String convertHexToIP(hex) {
+ 	[convertHexToInt(hex[0..1]),convertHexToInt(hex[2..3]),convertHexToInt(hex[4..5]),convertHexToInt(hex[6..7])].join(".")
+}
+
+private getHostAddress() {
+ 	def ip = settings.ip
+ 	def port = settings.port
+ 	if (!ip || !port) {
+ 		def parts = device.deviceNetworkId.split(":")
+ 		if (parts.length == 2) {
+ 			ip = parts[0]
+ 			port = parts[1]
+ 		} else {
+ 			log.warn "Can't figure out ip and port for device: ${device.id}"
+		 }
+ 	}
+ 	log.debug "Using ip: ${ip} and port: ${port} for device: ${device.id}"
+ 	return convertHexToIP(ip) + ":" + convertHexToInt(port)
 }
