@@ -178,13 +178,13 @@ private removeChildDevices(delete) {
 
 def response(evt) {	 
 
-	//log.trace "in response($evt)";
+	//log.trace "in response($evt.description)";
     
     def msg = parseLanMessage(evt.description);
     if(msg && msg.body && msg.body.startsWith("<?xml")){
-    	
-    	def mediaContainer = new XmlSlurper().parseText(msg.body)
-                        
+		//log.debug "Message ${msg}"
+        
+		def mediaContainer = new XmlSlurper().parseText(msg.body)
         log.debug "Parsing /status/sessions"
         getChildDevices().each { pht ->
         

@@ -39,8 +39,7 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
     unsubscribe()
-    unschedule()
-    
+    unschedule()    
     initialize()
 }
 
@@ -77,6 +76,8 @@ def initialize() {
 	subscribe(thermostats, "thermostatOperatingState", eventHandler, [filterEvents: false])
 	subscribe(temperature, "temperature", eventHandler, [filterEvents: false])   
 	subscribe(water, "water", eventHandler, [filterEvents: false])
+    subscribe(fans, "switch.on", eventHandler, [filterEvents: false])
+    subscribe(fans, "switch.off", eventHandler, [filterEvents: false])
     
     sendCommand("GET", "/devices", [value:"reload"])
 }
@@ -88,6 +89,7 @@ preferences {
 		input "doors", "capability.doorControl", title: "Doors", multiple: true, required: false
 		input "music", "capability.musicPlayer", title: "Music Players", multiple: true, required: false
         input "sprinklers", "capability.relaySwitch", title: "Sprinklers", multiple: true, required: false
+        input "fans", "capability.switch", title: "Fans", multiple: true, required: false
         //input "thermostats", "capability.thermostat", title: "Thermostats", multiple: true, required: false
         //input "locks", "capability.lock", title: "Locks", multiple: true, required: false        
     }
@@ -123,6 +125,7 @@ def getDevices() {
 	humidity?.each{data << getDeviceData(it)}    
 	battery?.each{data << getDeviceData(it)}
     sprinklers?.each{data << getDeviceData(it)}
+    fans?.each{data << getDeviceData(it)}
     //water?.each{data << getDeviceData(it)}
     //thermostats?.each{data << getDeviceData(it)}
     //locks?.each{data << getDeviceData(it)}
@@ -135,7 +138,7 @@ def getDevices() {
 }
 
 def updateDevice() {
-	log.debug "updateDevice(), DeviceID: $params.deviceId, Type: $params.type, Value: $params.value"
+	log.debug "Update Received: DeviceID: $params.deviceId, Type: $params.type, Value: $params.value"
  
  	def deviceId = params.deviceId
     def type = params.type
@@ -161,6 +164,9 @@ def updateDevice() {
         	device = switches?.find { it.id == deviceId }
             if (!device) {
             	device = sprinklers?.find { it.id == deviceId }
+                if (!device) {
+                	device = fans?.find { it.id == deviceId }
+                }
             }
             if (device) {
             	device.update(value)
