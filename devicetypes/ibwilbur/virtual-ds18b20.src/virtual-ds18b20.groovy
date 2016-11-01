@@ -56,5 +56,6 @@ def refresh() {
 }
 
 def update(newTemperature) {
+	log.debug "Temperature updated: $newTemperature"
 	sendEvent(name: "temperature", value: newTemperature)
 }
