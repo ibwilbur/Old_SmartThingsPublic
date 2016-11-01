@@ -79,7 +79,7 @@ def initialize() {
     subscribe(fans, "switch.on", eventHandler, [filterEvents: false])
     subscribe(fans, "switch.off", eventHandler, [filterEvents: false])
     
-    sendCommand("GET", "/devices", [value:"reload"])
+    sendCommand("GET", "/devices/reload", [])
 }
 
 preferences {
@@ -137,8 +137,23 @@ def getDevices() {
     return data.unique()
 }
 
+def eventHandler(e) {
+    log.debug "Event from: DeviceId: $e.deviceId ($e.displayName), Name: $e.name, Value: $e.value"
+    
+    def data = [deviceid: e.deviceId, attribute: e.name, value: e.value ]
+    def method = "PUT"
+    def value = e.value
+    
+    if (e.value.contains('refresh.')) { 
+    	method = "GET" 
+        data.value = "refresh"
+	}    
+    
+    sendCommand(method, "/devices", data)
+}
+
 def updateDevice() {
-	log.debug "Update Received: DeviceID: $params.deviceId, Type: $params.type, Value: $params.value"
+	log.debug "Update Received: DeviceId: $params.deviceId, Name: $params.type, Value: $params.value"
  
  	def deviceId = params.deviceId
     def type = params.type
@@ -150,6 +165,8 @@ def updateDevice() {
         	device = temperature?.find { it.id == deviceId }
             if (device) {
             	device.update(value)
+            } else {
+            	log.debug "DeviceId $params.deviceId not found"
             }
         	break
             
@@ -254,19 +271,6 @@ def sprinklerEventHandler(e) {
     	def data = [deviceid: e.deviceId, attribute: e.name, value: e.value]  
     	sendCommand("PUT", "/sprinkler", data)    
     }
-}
-
-def eventHandler(e) {
-    log.debug "Event from: $e.displayName, Value: $e.value, Source: $e.source, ID: $e.deviceId, Name: $e.name"
-    
-    def data = [deviceid: e.deviceId, attribute: e.name, value: e.value ]
-    def method = "PUT"
-    def value = e.value
-    if (e.value.contains('refresh.')) { 
-    	method = "GET" 
-        data.value = "refresh"
-	}    
-    sendCommand(method, "/devices", data)
 }
 
 def sendCommand(method, path, data) {

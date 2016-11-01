@@ -57,11 +57,11 @@ def updated() {
 
 def initialize() {
 	subscribe(temperature, "temperature", temperatureHandler, [filterEvents: false])
-    sendCommand("GET", "/devices", [value:"reload"])
+    sendCommand("GET", "/devices/reload", [])
 }
 
 def temperatureHandler(e) {
-	log.trace "temperature: DeviceID: $e.deviceId, Attribute: $e.name, Value: $e.value"
+	log.trace "temperatureHandler: DeviceID: $e.deviceId, Attribute: $e.name, Value: $e.value"
     
     if (e.doubleValue >= highsetpoint) {
     	log.debug "Turning fan on"
