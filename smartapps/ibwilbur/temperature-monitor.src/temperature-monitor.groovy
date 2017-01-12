@@ -36,7 +36,7 @@ preferences {
 	section("Select the fan to turn on... "){
 		input "fan", "capability.switch", title: "Fan", multiple: false, required: false
 	}
-	section("When does the fan turn off?"){
+	section("When does the fan turn on?"){
 		input "highsetpoint", "number", title: "Temperature?"
 	}
 	section("When does the fan turn off?"){
@@ -64,11 +64,9 @@ def temperatureHandler(e) {
 	log.trace "temperatureHandler: DeviceID: $e.deviceId, Attribute: $e.name, Value: $e.value"
     
     if (e.doubleValue >= highsetpoint) {
-    	log.debug "Turning fan on"
     	fan.on()
     }
     else if (e.doubleValue <= lowsetpoint) {
-    	log.debug "Turning fan off"
     	fan.off()
     }
 }

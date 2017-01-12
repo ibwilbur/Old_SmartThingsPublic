@@ -13,6 +13,10 @@
  *  for the specific language governing permissions and limitations under the License.
  *
  */
+import groovy.json.JsonSlurper
+import groovy.json.JsonOutput
+import groovy.transform.Field
+
 definition (
     name: "RasPi Controller",
     namespace: "ibwilbur",
@@ -24,11 +28,26 @@ definition (
     iconX3Url: "http://download.easyicon.net/png/559404/128/"
 )
 
-preferences {
-	section("Raspberry Pi Setup") {
-        input "ip", "text", "title": "IP Address", multiple: false, required: false
-        input "port", "text", "title": "Port", multiple: false, required: false
-	}   
+preferences {   
+    section("Control things") {
+		input "switches", "capability.switch", title: "Switches", multiple: true, required: false
+        input "dimmers", "capability.switchLevel", title: "Dimmers", multiple: true, required: false
+		input "doors", "capability.doorControl", title: "Doors", multiple: true, required: false
+		input "music", "capability.musicPlayer", title: "Music Players", multiple: true, required: false
+    }
+
+    section("View things") {		
+		input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false
+		input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false
+		input "motion", "capability.motionSensor", title: "Motion Sensors", multiple: true, required: false
+		input "temperature", "capability.temperatureMeasurement", title: "Temperature", multiple: true, required: false
+		input "battery", "capability.battery", title: "Battery Status", multiple: true, required: false      
+    }
+    
+	section("Raspberry Pi setup") {
+        input("ip", "string", title: "IP Address", description: "RasPi IP Address", required: false)
+        input("port", "string", title: "Port", description: "Listening Port", required: false)        
+	}    
 }
 
 def installed() {
@@ -46,159 +65,95 @@ def updated() {
 def initialize() {
     if (!state.accessToken) { createAccessToken() }
     
-    subscribe(acceleration, "acceleration", eventHandler, [filterEvents: false])
-    subscribe(battery, "battery", eventHandler, [filterEvents: false])
-	subscribe(camera, "image", eventHandler, [filterEvents: false])
-    subscribe(contacts, "contact", eventHandler, [filterEvents: false])
-	subscribe(dimmers, "level", eventHandler, [filterEvents: false])
-    subscribe(doors, "door", eventHandler, [filterEvents: false])
-	subscribe(energy, "energy", eventHandler, [filterEvents: false])
-    subscribe(humidity, "humidity", eventHandler, [filterEvents: false])
-    subscribe(lights, "switch.on", eventHandler, [filterEvents: false])
-	subscribe(lights, "switch.off", eventHandler, [filterEvents: false])
-	subscribe(locks, "lock", eventHandler, [filterEvents: false])
-	subscribe(luminosity, "luminosity", eventHandler, [filterEvents: false])
-    subscribe(momentaries, "push", eventHandler, [filterEvents: false])
-	subscribe(momentaries, "momentary", eventHandler, [filterEvents: false])
-    subscribe(motion, "motion", eventHandler, [filterEvents: false])
-	subscribe(music, "status", eventHandler, [filterEvents: false])
-	subscribe(music, "level", eventHandler, [filterEvents: false])
-	subscribe(music, "trackDescription", eventHandler, [filterEvents: false])
-	subscribe(music, "trackData", eventHandler, [filterEvents: false])
-	subscribe(music, "mute", eventHandler, [filterEvents: false])    
-    subscribe(power, "power", eventHandler, [filterEvents: false])  
-    subscribe(presence, "presence", eventHandler, [filterEvents: false])    
-    subscribe(sprinklers, "switch", sprinklerEventHandler)   
-	subscribe(thermostats, "temperature", eventHandler, [filterEvents: false])
-	subscribe(thermostats, "heatingSetpoint", eventHandler, [filterEvents: false])
-	subscribe(thermostats, "coolingSetpoint", eventHandler, [filterEvents: false])
-	subscribe(thermostats, "thermostatFanMode", eventHandler, [filterEvents: false])
-	subscribe(thermostats, "thermostatOperatingState", eventHandler, [filterEvents: false])
-	subscribe(temperature, "temperature", eventHandler, [filterEvents: false])   
-	subscribe(water, "water", eventHandler, [filterEvents: false])
-    subscribe(fans, "switch.on", eventHandler, [filterEvents: false])
-    subscribe(fans, "switch.off", eventHandler, [filterEvents: false])
+    subscribe(switches, "switch", internalEventHandler)
+    subscribe(dimmers, "level", internalEventHandler)
+    subscribe(doors, "door", internalEventHandler)    
+	subscribe(music, "status", internalEventHandler)
+	subscribe(music, "level", internalEventHandler)
+	subscribe(music, "trackDescription", internalEventHandler)
+	subscribe(music, "trackData", internalEventHandler)
+	subscribe(music, "mute", internalEventHandler)
+    subscribe(presence, "presence", internalEventHandler)
+    subscribe(contacts, "contact", internalEventHandler)
+    subscribe(motion, "motion", internalEventHandler)
+    subscribe(temperature, "temperature", internalEventHandler)
+    subscribe(battery, "battery", internalEventHandler)
     
-    sendCommand("GET", "/devices/reload", [])
-}
-
-preferences {
-
-    section("Control things") {
-		input "lights", "capability.switch", title: "Lights", multiple: true, required: false
-		input "doors", "capability.doorControl", title: "Doors", multiple: true, required: false
-		input "music", "capability.musicPlayer", title: "Music Players", multiple: true, required: false
-        input "sprinklers", "capability.relaySwitch", title: "Sprinklers", multiple: true, required: false
-        input "fans", "capability.switch", title: "Fans", multiple: true, required: false
-        //input "thermostats", "capability.thermostat", title: "Thermostats", multiple: true, required: false
-        //input "locks", "capability.lock", title: "Locks", multiple: true, required: false        
-    }
-
-    section("View things") {
-		input "camera", "capability.imageCapture", title: "Cameras (Image Capture)", multiple: true, required: false
-		input "presence", "capability.presenceSensor", title: "Presence Sensors", multiple: true, required: false
-		input "contacts", "capability.contactSensor", title: "Contact Sensors", multiple: true, required: false
-		input "motion", "capability.motionSensor", title: "Motion Sensors", multiple: true, required: false
-		input "temperature", "capability.temperatureMeasurement", title: "Temperature", multiple: true, required: false
-		input "humidity", "capability.relativeHumidityMeasurement", title: "Hygrometer", multiple: true, required: false
-		input "battery", "capability.battery", title: "Battery Status", multiple: true, required: false
-        //input "water", "capability.waterSensor", title: "Water Sensors...", multiple: true, required: false
-        //input "energy", "capability.energyMeter", title: "Energy Meters...", multiple: true, required: false
-        //input "power", "capability.powerMeter", title: "Power Meters...", multiple: true, required: false
-        //input "acceleration", "capability.accelerationSensor", title: "Vibration Sensors...", multiple: true, required: false
-        //input "luminosity", "capability.illuminanceMeasurement", title: "Luminosity Sensors...", multiple: true, required: false       
-    }
-
+    //schedule("0 0/1 * * * ?", sendTemperatures)
+    
+    sendCommand("GET", "/reload", null)
 }
 
 def getDevices() {
-    def data = []
-    
-	lights?.each{data << getDeviceData(it)}
+    def data = []    
+	switches?.each{data << getDeviceData(it)}
+	dimmers?.each{data << getDeviceData(it)}
 	doors?.each{data << getDeviceData(it)}
 	music?.each{data << getDeviceData(it)}
-	camera?.each{data << getDeviceData(it)}
 	presence?.each{data << getDeviceData(it)}
 	contacts?.each{data << getDeviceData(it)}
 	motion?.each{data << getDeviceData(it)}
-	temperature?.each{data << getDeviceData(it)}
-	humidity?.each{data << getDeviceData(it)}    
-	battery?.each{data << getDeviceData(it)}
-    sprinklers?.each{data << getDeviceData(it)}
-    fans?.each{data << getDeviceData(it)}
-    //water?.each{data << getDeviceData(it)}
-    //thermostats?.each{data << getDeviceData(it)}
-    //locks?.each{data << getDeviceData(it)}
-	//energy?.each{data << getDeviceData(it)}
-	//power?.each{data << getDeviceData(it)}
-	//acceleration?.each{data << getDeviceData(it)}
-	//luminosity?.each{data << getDeviceData(it)}
-  
-    return data.unique()
+	temperature?.each{data << getDeviceData(it)}	
+	battery?.each{data << getDeviceData(it)} 
+
+	return data.unique()
 }
 
-def eventHandler(e) {
-    log.debug "Event from: DeviceId: $e.deviceId ($e.displayName), Name: $e.name, Value: $e.value"
+def internalEventHandler(e) {
+    log.debug "Internal event: Name: $e.displayName, Type: $e.name, Value: $e.value"
     
-    def data = [deviceid: e.deviceId, attribute: e.name, value: e.value ]
-    def method = "PUT"
-    def value = e.value
-    
-    if (e.value.contains('refresh.')) { 
-    	method = "GET" 
-        data.value = "refresh"
-	}    
-    
-    sendCommand(method, "/devices", data)
+    def data = [name: e.displayName, type: e.name, value: e.value]
+	switch (e.name) {
+    	case "temperature":
+        	sendCommand("PUT", "/temperature", [data])
+        	break
+            
+		default:
+        	sendCommand("PUT", "/push", data)
+        	break
+    } 
+
+}
+
+def sendTemperatures() {
+    def data = []
+    temperature?.each { data << getTemperatureData(it) }
+    sendCommand("PUT", "/temperature", data)    
+}
+
+def getTemperatureData(it) {
+	[
+    	name: it.displayName,
+        type: "temperature",
+        value: it.currentValue("temperature")
+    ]
 }
 
 def updateDevice() {
-	log.debug "Update Received: DeviceId: $params.deviceId, Name: $params.type, Value: $params.value"
- 
- 	def deviceId = params.deviceId
-    def type = params.type
-    def value = params.value
-    def device
-    
+	def name = request.JSON?.name
+    def type = request.JSON?.type
+    def value = request.JSON?.value
+	log.debug "Update received: Name: $name, Type: $type, Value: $value"
+
+    def device   
     switch (type) {
     	case "temperature":
-        	device = temperature?.find { it.id == deviceId }
-            if (device) {
-            	device.update(value)
-            } else {
-            	log.debug "DeviceId $params.deviceId not found"
-            }
+        	device = temperature?.find { it.name == name }
+            device?.update(value)
         	break
             
 		case "door":
-        	device = doors?.find { it.id == deviceId }
-            if (device) {
-            	device.update(value)
-            }
+        	device = doors?.find { it.name == name }
+            device?.update(value)
         	break
             
 		case "switch":        	
-        	device = switches?.find { it.id == deviceId }
-            if (!device) {
-            	device = sprinklers?.find { it.id == deviceId }
-                if (!device) {
-                	device = fans?.find { it.id == deviceId }
-                }
-            }
-            if (device) {
-            	device.update(value)
-            } else {
-            	log.debug "Unable to locate Device: ${deviceId}"
-            }
+        	device = switches?.find { it.name == name }
+            device?.update(value)
         	break
-
-            
 		default:
             break
     }
-
-	def timeZone = TimeZone.getTimeZone('America/Chicago')
-    state.lastContact = new Date().format('MM/dd/yyyy HH:mm a', timeZone)
 }
 
 def getDeviceData(device) {
@@ -277,22 +232,19 @@ def sendCommand(method, path, data) {
 	def hubAction = new physicalgraph.device.HubAction(
     	method: method,
         path: path,
-        headers: [HOST: "$settings.ip:$settings.port"],
+        headers: ["HOST": "$settings.ip:$settings.port", "Content-Type": "application/json"],
         body: data
     )
+    //log.debug "Sending data: ${data}"
     sendHubCommand(hubAction)
 }
 
 mappings {
     path("/devices") { 
     	action: [
-        	GET: "getDevices"
+        	GET: "getDevices",
+            PUT: "updateDevice"
 		]  
-    }
-    path ("/devices/:deviceId/:type/:value") {
-    	action: [
-        	PUT: "updateDevice"
-        ]
     }
 }
 
