@@ -24,23 +24,15 @@ definition(
     iconX3Url: "https://s3.amazonaws.com/smartapp-icons/Meta/temp_thermo-switch.png")
 
 
-preferences {
-	section("Raspberry Pi Setup") {
-        input "ip", "text", "title": "IP Address", multiple: false, required: false
-        input "port", "text", "title": "Port", multiple: false, required: false
-	} 
-    
-	section("Choose a temperature sensor... "){
-		input "temperature", "capability.temperatureMeasurement", title: "Temprature sensor", multiple: false, required: false
+preferences {   
+	section("Choose a temperature sensor..."){
+		input "sensor", "capability.temperatureMeasurement", title: "Temprature sensor", multiple: false, required: false
 	}
-	section("Select the fan to turn on... "){
+	section("Select the fan to control..."){
 		input "fan", "capability.switch", title: "Fan", multiple: false, required: false
 	}
-	section("When does the fan turn on?"){
-		input "highsetpoint", "number", title: "Temperature?"
-	}
-	section("When does the fan turn off?"){
-		input "lowsetpoint", "number", title: "Temperature?"
+	section("Turn on/off at what temperature?"){
+		input "setpoint", "number", title: "Temperature"
 	}
 }
 
@@ -52,31 +44,30 @@ def installed() {
 def updated() {
 	log.debug "Updated with settings: ${settings}"
 	unsubscribe()
+    unschedule()
 	initialize()
 }
 
 def initialize() {
-	subscribe(temperature, "temperature", temperatureHandler, [filterEvents: false])
-    sendCommand("GET", "/devices/reload", [])
+	subscribe(sensor, "temperature", temperatureHandler, [filterEvents: false])
+    schedule("0 0/1 * * * ?", checkTemperature)
 }
 
 def temperatureHandler(e) {
-	log.trace "temperatureHandler: DeviceID: $e.deviceId, Attribute: $e.name, Value: $e.value"
-    
-    if (e.doubleValue >= highsetpoint) {
-    	fan.on()
-    }
-    else if (e.doubleValue <= lowsetpoint) {
-    	fan.off()
-    }
+	checkTemperature()
 }
 
-def sendCommand(method, path, data) {
-	def hubAction = new physicalgraph.device.HubAction(
-    	method: method,
-        path: path,
-        headers: [HOST: "$settings.ip:$settings.port"],
-        body: data
-    )
-    sendHubCommand(hubAction)
+def checkTemperature() {
+	def currentTemp = sensor.currentValue("temperature")
+    def currentState = fan.currentState("switch").value
+    //log.trace "Temperature: $currentTemp, State: $currentState"
+    
+    if (currentTemp > setpoint && currentState == "off") {
+    	fan.on()
+        log.trace "Current temperature is $currentTemp, target temp is $setpoint.  Turning fan on."
+    }
+    else if (currentTemp <= setpoint && currentState == "on") {
+    	fan.off()
+        log.trace "Current temperature is $currentTemp, target temp is $setpoint.  Turning fan off."
+    }
 }
