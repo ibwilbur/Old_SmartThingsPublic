@@ -105,7 +105,7 @@ def internalEventHandler(e) {
     def data = [name: e.displayName, type: e.name, value: e.value]
 	switch (e.name) {
     	case "temperature":
-        	sendCommand("PUT", "/temperature", [data])
+        	sendCommand("PUT", "/temperature", data)
         	break
             
 		default:
@@ -232,10 +232,10 @@ def sendCommand(method, path, data) {
 	def hubAction = new physicalgraph.device.HubAction(
     	method: method,
         path: path,
-        headers: ["HOST": "$settings.ip:$settings.port", "Content-Type": "application/json"],
+        headers: [HOST: "$settings.ip:$settings.port"],
         body: data
     )
-    //log.debug "Sending data: ${data}"
+    //log.debug "Result $hubAction"
     sendHubCommand(hubAction)
 }
 

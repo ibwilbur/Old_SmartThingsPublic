@@ -49,7 +49,7 @@ def updated() {
 }
 
 def initialize() {
-	subscribe(sensor, "temperature", temperatureHandler, [filterEvents: false])
+	//subscribe(sensor, "temperature", temperatureHandler, [filterEvents: false])
     schedule("0 0/1 * * * ?", checkTemperature)
 }
 
@@ -66,7 +66,7 @@ def checkTemperature() {
     	fan.on()
         log.trace "Current temperature is $currentTemp, target temp is $setpoint.  Turning fan on."
     }
-    else if (currentTemp <= setpoint && currentState == "on") {
+    else if (currentTemp < setpoint && currentState == "on") {
     	fan.off()
         log.trace "Current temperature is $currentTemp, target temp is $setpoint.  Turning fan off."
     }
