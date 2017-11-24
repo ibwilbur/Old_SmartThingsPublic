@@ -103,6 +103,8 @@ def internalEventHandler(e) {
     log.debug "Internal event: Name: $e.displayName, Type: $e.name, Value: $e.value"
     
     def data = [name: e.displayName, type: e.name, value: e.value]
+    sendCommand("PUT", "/push", data)
+    /*
 	switch (e.name) {
     	case "temperature":
         	sendCommand("PUT", "/temperature", data)
@@ -112,7 +114,7 @@ def internalEventHandler(e) {
         	sendCommand("PUT", "/push", data)
         	break
     } 
-
+	*/
 }
 
 def sendTemperatures() {
